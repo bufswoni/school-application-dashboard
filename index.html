@@ -1,0 +1,274 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>고등학교별 지원/등록 현황 대시보드 (Top 30)</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { font-family: 'Segoe UI', 'Apple SD Gothic Neo', sans-serif; background: #f0f2f5; color: #1a1a2e; }
+
+  .header { background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%); color: #fff; padding: 28px 40px; }
+  .header h1 { font-size: 26px; font-weight: 700; margin-bottom: 6px; }
+  .header p { font-size: 14px; color: #94a3b8; }
+
+  .kpi-row { display: flex; gap: 16px; padding: 20px 40px; flex-wrap: wrap; }
+  .kpi { background: #fff; border-radius: 12px; padding: 20px 24px; flex: 1; min-width: 180px; box-shadow: 0 1px 4px rgba(0,0,0,.06); }
+  .kpi .label { font-size: 12px; color: #64748b; text-transform: uppercase; letter-spacing: .5px; margin-bottom: 6px; }
+  .kpi .value { font-size: 28px; font-weight: 700; color: #1a1a2e; }
+  .kpi .sub { font-size: 13px; margin-top: 4px; }
+  .up { color: #2563eb; } .down { color: #dc2626; }
+
+  .filters { padding: 12px 40px; display: flex; gap: 12px; flex-wrap: wrap; align-items: center; }
+  .filters label { font-size: 13px; color: #64748b; }
+  .filters select, .filters input { padding: 7px 12px; border: 1px solid #d1d5db; border-radius: 8px; font-size: 13px; background: #fff; }
+  .filters select:focus, .filters input:focus { outline: none; border-color: #2563eb; }
+
+  .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; padding: 20px 40px; }
+  .card { background: #fff; border-radius: 12px; padding: 24px; box-shadow: 0 1px 4px rgba(0,0,0,.06); }
+  .card h3 { font-size: 15px; font-weight: 600; color: #334155; margin-bottom: 16px; }
+  .card.full { grid-column: 1 / -1; }
+
+  .table-wrap { overflow-x: auto; }
+  table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  th { background: #1a1a2e; color: #fff; padding: 10px 12px; text-align: center; font-weight: 600; position: sticky; top: 0; white-space: nowrap; cursor: pointer; user-select: none; }
+  th:hover { background: #0f3460; }
+  th.sorted-asc::after { content: ' ▲'; font-size: 10px; }
+  th.sorted-desc::after { content: ' ▼'; font-size: 10px; }
+  td { padding: 9px 12px; text-align: center; border-bottom: 1px solid #e5e7eb; white-space: nowrap; }
+  tr:hover td { background: #f1f5f9; }
+  td:first-child, td:nth-child(2) { text-align: left; }
+  .rank-badge { display: inline-block; width: 24px; height: 24px; border-radius: 50%; font-size: 11px; font-weight: 700; line-height: 24px; text-align: center; color: #fff; }
+  .rank-1 { background: #f59e0b; } .rank-2 { background: #94a3b8; } .rank-3 { background: #b45309; }
+  .rank-n { background: #cbd5e1; color: #475569; }
+  .change-pos { color: #2563eb; font-weight: 600; } .change-neg { color: #dc2626; font-weight: 600; }
+  .tag { display: inline-block; padding: 2px 8px; border-radius: 10px; font-size: 11px; font-weight: 500; }
+  .tag-일반고 { background: #dbeafe; color: #1d4ed8; }
+  .tag-특성화고 { background: #fef3c7; color: #92400e; }
+  .tag-검정고시 { background: #e0e7ff; color: #4338ca; }
+  .tag-특수목적고 { background: #dcfce7; color: #166534; }
+  .tag-자율고 { background: #fce7f3; color: #9d174d; }
+  .tag-기타 { background: #f1f5f9; color: #475569; }
+
+  .chart-container { position: relative; height: 350px; }
+  @media (max-width: 900px) { .grid { grid-template-columns: 1fr; } .kpi-row { padding: 12px 16px; } .grid, .filters, .header { padding-left: 16px; padding-right: 16px; } }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <h1>고등학교별 지원/등록 현황 대시보드</h1>
+  <p>2024~2026학년도 3개년 지원인원 기준 상위 30개 고등학교 분석</p>
+</div>
+
+<div class="kpi-row" id="kpiRow"></div>
+
+<div class="filters">
+  <label>지역:</label>
+  <select id="filterRegion"><option value="">전체</option></select>
+  <label>고교구분:</label>
+  <select id="filterType"><option value="">전체</option></select>
+  <label>검색:</label>
+  <input type="text" id="filterSearch" placeholder="고교명 검색...">
+</div>
+
+<div class="grid">
+  <div class="card full">
+    <h3>상위 30 고등학교 지원/등록 현황표</h3>
+    <div class="table-wrap" style="max-height:600px; overflow-y:auto;">
+      <table id="mainTable">
+        <thead><tr>
+          <th data-col="rank" data-type="num">순위</th>
+          <th data-col="school" data-type="str">고교명</th>
+          <th data-col="region" data-type="str">지역</th>
+          <th data-col="type" data-type="str">구분</th>
+          <th data-col="a24" data-type="num">'24 지원</th>
+          <th data-col="r24" data-type="num">'24 등록</th>
+          <th data-col="a25" data-type="num">'25 지원</th>
+          <th data-col="r25" data-type="num">'25 등록</th>
+          <th data-col="a26" data-type="num">'26 지원</th>
+          <th data-col="r26" data-type="num">'26 등록</th>
+          <th data-col="total_a" data-type="num">3년 총지원</th>
+          <th data-col="total_r" data-type="num">3년 총등록</th>
+          <th data-col="diff_a" data-type="num">25→26 지원</th>
+          <th data-col="diff_r" data-type="num">25→26 등록</th>
+        </tr></thead>
+        <tbody id="tableBody"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="card">
+    <h3>상위 10개교 3개년 지원인원 추이</h3>
+    <div class="chart-container"><canvas id="chartTrend"></canvas></div>
+  </div>
+  <div class="card">
+    <h3>상위 10개교 등록인원 비교</h3>
+    <div class="chart-container"><canvas id="chartReg"></canvas></div>
+  </div>
+  <div class="card">
+    <h3>고교유형별 분포 (3년 총지원)</h3>
+    <div class="chart-container"><canvas id="chartPie"></canvas></div>
+  </div>
+  <div class="card">
+    <h3>25→26 지원 증감 Top/Bottom 10</h3>
+    <div class="chart-container"><canvas id="chartDiff"></canvas></div>
+  </div>
+</div>
+
+<script>
+const DATA = [{"rank":1,"school":"부산-고등학교졸업자격검정고시","region":"부산광역시","district":"검정고시","type":"검정고시","a24":139,"p24":129,"r24":43,"a25":173,"p25":156,"r25":52,"a26":189,"p26":155,"r26":69,"total_a":501,"total_r":164,"diff_a":16,"diff_r":17},{"rank":2,"school":"경기-고등학교졸업학력검정고시","region":"경기도","district":"검정고시","type":"검정고시","a24":44,"p24":40,"r24":14,"a25":44,"p25":41,"r25":19,"a26":51,"p26":33,"r26":17,"total_a":139,"total_r":50,"diff_a":7,"diff_r":-2},{"rank":3,"school":"경남-고등학교졸업학력검정고시","region":"경상남도","district":"검정고시","type":"검정고시","a24":33,"p24":30,"r24":13,"a25":33,"p25":33,"r25":8,"a26":53,"p26":46,"r26":17,"total_a":119,"total_r":38,"diff_a":20,"diff_r":9},{"rank":4,"school":"대진전자통신고등학교","region":"부산광역시","district":"금정구","type":"특성화고","a24":37,"p24":36,"r24":9,"a25":26,"p25":26,"r25":4,"a26":51,"p26":45,"r26":20,"total_a":114,"total_r":33,"diff_a":25,"diff_r":16},{"rank":5,"school":"외국고등학교","region":"기타","district":"해외","type":"기타","a24":40,"p24":27,"r24":18,"a25":31,"p25":26,"r25":19,"a26":42,"p26":31,"r26":15,"total_a":113,"total_r":52,"diff_a":11,"diff_r":-4},{"rank":6,"school":"서울-고등학교졸업자격검정고시","region":"서울특별시","district":"검정고시","type":"검정고시","a24":43,"p24":37,"r24":11,"a25":34,"p25":31,"r25":5,"a26":33,"p26":27,"r26":13,"total_a":110,"total_r":29,"diff_a":-1,"diff_r":8},{"rank":7,"school":"정관고등학교","region":"부산광역시","district":"기장군","type":"일반고","a24":33,"p24":31,"r24":8,"a25":48,"p25":44,"r25":8,"a26":29,"p26":16,"r26":5,"total_a":110,"total_r":21,"diff_a":-19,"diff_r":-3},{"rank":8,"school":"내성고등학교","region":"부산광역시","district":"금정구","type":"일반고","a24":40,"p24":35,"r24":11,"a25":22,"p25":18,"r25":5,"a26":44,"p26":35,"r26":12,"total_a":106,"total_r":28,"diff_a":22,"diff_r":7},{"rank":9,"school":"서창고등학교","region":"경상남도","district":"양산시","type":"일반고","a24":35,"p24":33,"r24":12,"a25":28,"p25":27,"r25":7,"a26":35,"p26":29,"r26":10,"total_a":98,"total_r":29,"diff_a":7,"diff_r":3},{"rank":10,"school":"해운대관광고등학교","region":"부산광역시","district":"해운대구","type":"특성화고","a24":25,"p24":21,"r24":4,"a25":41,"p25":29,"r25":10,"a26":31,"p26":30,"r26":8,"total_a":97,"total_r":22,"diff_a":-10,"diff_r":-2},{"rank":11,"school":"신정고등학교","region":"부산광역시","district":"기장군","type":"일반고","a24":37,"p24":35,"r24":11,"a25":40,"p25":37,"r25":11,"a26":19,"p26":11,"r26":5,"total_a":96,"total_r":27,"diff_a":-21,"diff_r":-6},{"rank":12,"school":"양산여자고등학교","region":"경상남도","district":"양산시","type":"일반고","a24":14,"p24":14,"r24":6,"a25":35,"p25":31,"r25":14,"a26":39,"p26":31,"r26":9,"total_a":88,"total_r":29,"diff_a":4,"diff_r":-5},{"rank":13,"school":"부산마케팅고등학교","region":"부산광역시","district":"부산진구","type":"특성화고","a24":34,"p24":30,"r24":9,"a25":36,"p25":30,"r25":5,"a26":15,"p26":13,"r26":4,"total_a":85,"total_r":18,"diff_a":-21,"diff_r":-1},{"rank":14,"school":"부산컴퓨터과학고등학교","region":"부산광역시","district":"동구","type":"특성화고","a24":28,"p24":26,"r24":6,"a25":36,"p25":34,"r25":7,"a26":19,"p26":17,"r26":3,"total_a":83,"total_r":16,"diff_a":-17,"diff_r":-4},{"rank":15,"school":"부산정보관광고등학교","region":"부산광역시","district":"금정구","type":"특성화고","a24":31,"p24":28,"r24":9,"a25":22,"p25":18,"r25":6,"a26":27,"p26":25,"r26":5,"total_a":80,"total_r":20,"diff_a":5,"diff_r":-1},{"rank":16,"school":"부산진여자상업고등학교","region":"부산광역시","district":"부산진구","type":"특성화고","a24":30,"p24":29,"r24":8,"a25":32,"p25":28,"r25":8,"a26":17,"p26":16,"r26":4,"total_a":79,"total_r":20,"diff_a":-15,"diff_r":-4},{"rank":17,"school":"동래원예고등학교","region":"부산광역시","district":"동래구","type":"특성화고","a24":32,"p24":31,"r24":9,"a25":21,"p25":20,"r25":4,"a26":22,"p26":20,"r26":7,"total_a":75,"total_r":20,"diff_a":1,"diff_r":3},{"rank":18,"school":"학력인정부산예원고등학교(2년제)","region":"부산광역시","district":"금정구","type":"기타","a24":39,"p24":39,"r24":6,"a25":21,"p25":21,"r25":6,"a26":14,"p26":13,"r26":6,"total_a":74,"total_r":18,"diff_a":-7,"diff_r":0},{"rank":19,"school":"부산전자공업고등학교","region":"부산광역시","district":"동래구","type":"특성화고","a24":26,"p24":25,"r24":7,"a25":25,"p25":24,"r25":7,"a26":21,"p26":21,"r26":6,"total_a":72,"total_r":20,"diff_a":-4,"diff_r":-1},{"rank":20,"school":"효암고등학교","region":"경상남도","district":"양산시","type":"일반고","a24":23,"p24":23,"r24":10,"a25":24,"p25":22,"r25":5,"a26":25,"p26":21,"r26":7,"total_a":72,"total_r":22,"diff_a":1,"diff_r":2},{"rank":21,"school":"양산고등학교","region":"경상남도","district":"양산시","type":"자율고","a24":39,"p24":36,"r24":5,"a25":14,"p25":13,"r25":5,"a26":19,"p26":16,"r26":7,"total_a":72,"total_r":17,"diff_a":5,"diff_r":2},{"rank":22,"school":"금샘고등학교","region":"부산광역시","district":"금정구","type":"특성화고","a24":21,"p24":21,"r24":4,"a25":32,"p25":25,"r25":7,"a26":17,"p26":15,"r26":7,"total_a":70,"total_r":18,"diff_a":-15,"diff_r":0},{"rank":23,"school":"부산여자상업고등학교","region":"부산광역시","district":"수영구","type":"특성화고","a24":22,"p24":22,"r24":5,"a25":27,"p25":22,"r25":6,"a26":21,"p26":18,"r26":7,"total_a":70,"total_r":18,"diff_a":-6,"diff_r":1},{"rank":24,"school":"물금고등학교","region":"경상남도","district":"양산시","type":"일반고","a24":23,"p24":22,"r24":8,"a25":23,"p25":17,"r25":5,"a26":24,"p26":19,"r26":8,"total_a":70,"total_r":21,"diff_a":1,"diff_r":3},{"rank":25,"school":"부산대학교사범대학부설고등학교","region":"부산광역시","district":"금정구","type":"일반고","a24":18,"p24":18,"r24":8,"a25":25,"p25":21,"r25":9,"a26":26,"p26":22,"r26":11,"total_a":69,"total_r":28,"diff_a":1,"diff_r":2},{"rank":26,"school":"외국고등학교","region":"기타","district":"해외","type":"기타","a24":35,"p24":31,"r24":28,"a25":34,"p25":34,"r25":34,"a26":0,"p26":0,"r26":0,"total_a":69,"total_r":62,"diff_a":-34,"diff_r":-34},{"rank":27,"school":"남산고등학교","region":"부산광역시","district":"금정구","type":"일반고","a24":21,"p24":17,"r24":4,"a25":22,"p25":15,"r25":5,"a26":25,"p26":12,"r26":2,"total_a":68,"total_r":11,"diff_a":3,"diff_r":-3},{"rank":28,"school":"청주외국어고등학교","region":"충청북도","district":"청주시","type":"특수목적고","a24":25,"p24":25,"r24":8,"a25":21,"p25":21,"r25":9,"a26":22,"p26":19,"r26":8,"total_a":68,"total_r":25,"diff_a":1,"diff_r":-1},{"rank":29,"school":"부산정보고등학교","region":"부산광역시","district":"부산진구","type":"특성화고","a24":24,"p24":21,"r24":6,"a25":17,"p25":12,"r25":2,"a26":25,"p26":22,"r26":6,"total_a":66,"total_r":14,"diff_a":8,"diff_r":4},{"rank":30,"school":"울산-고등학교졸업학력검정고시","region":"울산광역시","district":"검정고시","type":"검정고시","a24":17,"p24":17,"r24":7,"a25":20,"p25":16,"r25":5,"a26":29,"p26":21,"r26":11,"total_a":66,"total_r":23,"diff_a":9,"diff_r":6}];
+
+let filtered = [...DATA];
+let sortCol = 'rank', sortDir = 'asc';
+
+// Populate filters
+const regions = [...new Set(DATA.map(d=>d.region))].sort();
+const types = [...new Set(DATA.map(d=>d.type))].sort();
+regions.forEach(r => { const o=document.createElement('option'); o.value=r; o.textContent=r; document.getElementById('filterRegion').appendChild(o); });
+types.forEach(t => { const o=document.createElement('option'); o.value=t; o.textContent=t; document.getElementById('filterType').appendChild(o); });
+
+function applyFilters() {
+  const reg = document.getElementById('filterRegion').value;
+  const typ = document.getElementById('filterType').value;
+  const q = document.getElementById('filterSearch').value.toLowerCase();
+  filtered = DATA.filter(d => (!reg || d.region===reg) && (!typ || d.type===typ) && (!q || d.school.toLowerCase().includes(q)));
+  doSort(); renderAll();
+}
+document.getElementById('filterRegion').onchange = applyFilters;
+document.getElementById('filterType').onchange = applyFilters;
+document.getElementById('filterSearch').oninput = applyFilters;
+
+function doSort() {
+  filtered.sort((a,b) => {
+    let va=a[sortCol], vb=b[sortCol];
+    if(typeof va==='string') { va=va.toLowerCase(); vb=vb.toLowerCase(); }
+    if(va<vb) return sortDir==='asc'?-1:1;
+    if(va>vb) return sortDir==='asc'?1:-1;
+    return 0;
+  });
+}
+
+document.querySelectorAll('#mainTable th').forEach(th => {
+  th.onclick = () => {
+    const col = th.dataset.col;
+    if(sortCol===col) sortDir = sortDir==='asc'?'desc':'asc';
+    else { sortCol=col; sortDir=th.dataset.type==='num'?'desc':'asc'; }
+    document.querySelectorAll('#mainTable th').forEach(h=>h.classList.remove('sorted-asc','sorted-desc'));
+    th.classList.add(sortDir==='asc'?'sorted-asc':'sorted-desc');
+    doSort(); renderTable();
+  };
+});
+
+function chg(v) { return v>0?`<span class="change-pos">+${v}</span>`:v<0?`<span class="change-neg">${v}</span>`:`<span>${v}</span>`; }
+function rankBadge(r) { const cls=r<=3?`rank-${r}`:'rank-n'; return `<span class="rank-badge ${cls}">${r}</span>`; }
+function tagHtml(t) { return `<span class="tag tag-${t}">${t}</span>`; }
+
+function renderTable() {
+  const tb = document.getElementById('tableBody');
+  tb.innerHTML = filtered.map((d,i) => `<tr>
+    <td>${rankBadge(d.rank)}</td>
+    <td style="font-weight:600">${d.school}</td>
+    <td>${d.region.replace('광역시','').replace('특별시','').replace('특별자치시','').replace('특별자치도','')}</td>
+    <td>${tagHtml(d.type)}</td>
+    <td>${d.a24}</td><td>${d.r24}</td>
+    <td>${d.a25}</td><td>${d.r25}</td>
+    <td style="font-weight:600">${d.a26}</td><td style="font-weight:600">${d.r26}</td>
+    <td style="font-weight:700">${d.total_a}</td><td style="font-weight:700">${d.total_r}</td>
+    <td>${chg(d.diff_a)}</td><td>${chg(d.diff_r)}</td>
+  </tr>`).join('');
+}
+
+function renderKPI() {
+  const d = filtered;
+  const ta24=d.reduce((s,x)=>s+x.a24,0), ta25=d.reduce((s,x)=>s+x.a25,0), ta26=d.reduce((s,x)=>s+x.a26,0);
+  const tr24=d.reduce((s,x)=>s+x.r24,0), tr25=d.reduce((s,x)=>s+x.r25,0), tr26=d.reduce((s,x)=>s+x.r26,0);
+  const diffA=ta26-ta25, diffR=tr26-tr25;
+  const pctA=ta25?((ta26/ta25-1)*100).toFixed(1):0;
+  const pctR=tr25?((tr26/tr25-1)*100).toFixed(1):0;
+  const regRate26=ta26?(tr26/ta26*100).toFixed(1):0;
+
+  document.getElementById('kpiRow').innerHTML = `
+    <div class="kpi"><div class="label">대상 학교 수</div><div class="value">${d.length}개교</div><div class="sub" style="color:#64748b">전체 Top 30 중</div></div>
+    <div class="kpi"><div class="label">2026 총 지원인원</div><div class="value">${ta26.toLocaleString()}명</div><div class="sub ${diffA>=0?'up':'down'}">전년 대비 ${diffA>=0?'+':''}${diffA}명 (${diffA>=0?'+':''}${pctA}%)</div></div>
+    <div class="kpi"><div class="label">2026 총 등록인원</div><div class="value">${tr26.toLocaleString()}명</div><div class="sub ${diffR>=0?'up':'down'}">전년 대비 ${diffR>=0?'+':''}${diffR}명 (${diffR>=0?'+':''}${pctR}%)</div></div>
+    <div class="kpi"><div class="label">2026 등록률</div><div class="value">${regRate26}%</div><div class="sub" style="color:#64748b">등록/지원</div></div>
+    <div class="kpi"><div class="label">3개년 누적 지원</div><div class="value">${(ta24+ta25+ta26).toLocaleString()}명</div><div class="sub" style="color:#64748b">'24: ${ta24} → '25: ${ta25} → '26: ${ta26}</div></div>
+  `;
+}
+
+const COLORS = ['#2563eb','#dc2626','#059669','#d97706','#7c3aed','#db2777','#0891b2','#65a30d','#ea580c','#6366f1'];
+
+let chartTrend, chartReg, chartPie, chartDiff;
+
+function renderCharts() {
+  const top10 = [...filtered].sort((a,b)=>b.total_a-a.total_a).slice(0,10);
+
+  // Trend chart
+  if(chartTrend) chartTrend.destroy();
+  chartTrend = new Chart(document.getElementById('chartTrend'), {
+    type:'line',
+    data: {
+      labels: ['2024','2025','2026'],
+      datasets: top10.map((d,i) => ({
+        label: d.school.length>10?d.school.slice(0,10)+'…':d.school,
+        data: [d.a24, d.a25, d.a26],
+        borderColor: COLORS[i], backgroundColor: COLORS[i]+'22',
+        borderWidth: 2.5, pointRadius: 4, tension: 0.3,
+      }))
+    },
+    options: { responsive:true, maintainAspectRatio:false, plugins:{legend:{position:'bottom',labels:{font:{size:11},boxWidth:12}}}, scales:{y:{beginAtZero:true,title:{display:true,text:'지원인원(명)'}}} }
+  });
+
+  // Registration bar chart
+  if(chartReg) chartReg.destroy();
+  chartReg = new Chart(document.getElementById('chartReg'), {
+    type:'bar',
+    data: {
+      labels: top10.map(d=>d.school.length>8?d.school.slice(0,8)+'…':d.school),
+      datasets: [
+        { label:'2024 등록', data:top10.map(d=>d.r24), backgroundColor:'#93c5fd' },
+        { label:'2025 등록', data:top10.map(d=>d.r25), backgroundColor:'#3b82f6' },
+        { label:'2026 등록', data:top10.map(d=>d.r26), backgroundColor:'#1e3a5f' },
+      ]
+    },
+    options: { responsive:true, maintainAspectRatio:false, plugins:{legend:{position:'bottom',labels:{font:{size:11},boxWidth:12}}}, scales:{y:{beginAtZero:true,title:{display:true,text:'등록인원(명)'}},x:{ticks:{font:{size:10}}}} }
+  });
+
+  // Pie chart by school type
+  if(chartPie) chartPie.destroy();
+  const typeMap = {};
+  filtered.forEach(d=>{ typeMap[d.type]=(typeMap[d.type]||0)+d.total_a; });
+  const pieLabels = Object.keys(typeMap).sort((a,b)=>typeMap[b]-typeMap[a]);
+  const pieColors = ['#2563eb','#f59e0b','#7c3aed','#059669','#db2777','#64748b'];
+  chartPie = new Chart(document.getElementById('chartPie'), {
+    type:'doughnut',
+    data: { labels:pieLabels, datasets:[{data:pieLabels.map(l=>typeMap[l]), backgroundColor:pieColors.slice(0,pieLabels.length), borderWidth:2}] },
+    options: { responsive:true, maintainAspectRatio:false, plugins:{legend:{position:'bottom',labels:{font:{size:12},boxWidth:14}}} }
+  });
+
+  // Diff chart
+  if(chartDiff) chartDiff.destroy();
+  const sorted = [...filtered].sort((a,b)=>b.diff_a-a.diff_a);
+  const diffData = [...sorted.slice(0,5), ...sorted.slice(-5)].filter((v,i,a)=>a.indexOf(v)===i);
+  chartDiff = new Chart(document.getElementById('chartDiff'), {
+    type:'bar',
+    data: {
+      labels: diffData.map(d=>d.school.length>10?d.school.slice(0,10)+'…':d.school),
+      datasets: [{
+        label:'25→26 지원증감',
+        data: diffData.map(d=>d.diff_a),
+        backgroundColor: diffData.map(d=>d.diff_a>=0?'#3b82f6':'#ef4444'),
+        borderRadius: 4,
+      }]
+    },
+    options: { indexAxis:'y', responsive:true, maintainAspectRatio:false, plugins:{legend:{display:false}}, scales:{x:{title:{display:true,text:'증감(명)'}},y:{ticks:{font:{size:11}}}} }
+  });
+}
+
+function renderAll() { renderKPI(); renderTable(); renderCharts(); }
+renderAll();
+</script>
+</body>
+</html>
