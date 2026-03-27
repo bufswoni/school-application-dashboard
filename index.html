@@ -3,33 +3,28 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>고등학교별 지원/등록 현황 대시보드 (Top 30)</title>
+<title>고등학교별 지원/등록 현황 대시보드 (Top 100)</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
 <style>
   * { margin: 0; padding: 0; box-sizing: border-box; }
   body { font-family: 'Segoe UI', 'Apple SD Gothic Neo', sans-serif; background: #f0f2f5; color: #1a1a2e; }
-
   .header { background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%); color: #fff; padding: 28px 40px; }
   .header h1 { font-size: 26px; font-weight: 700; margin-bottom: 6px; }
   .header p { font-size: 14px; color: #94a3b8; }
-
   .kpi-row { display: flex; gap: 16px; padding: 20px 40px; flex-wrap: wrap; }
   .kpi { background: #fff; border-radius: 12px; padding: 20px 24px; flex: 1; min-width: 180px; box-shadow: 0 1px 4px rgba(0,0,0,.06); }
   .kpi .label { font-size: 12px; color: #64748b; text-transform: uppercase; letter-spacing: .5px; margin-bottom: 6px; }
   .kpi .value { font-size: 28px; font-weight: 700; color: #1a1a2e; }
   .kpi .sub { font-size: 13px; margin-top: 4px; }
   .up { color: #2563eb; } .down { color: #dc2626; }
-
   .filters { padding: 12px 40px; display: flex; gap: 12px; flex-wrap: wrap; align-items: center; }
   .filters label { font-size: 13px; color: #64748b; }
   .filters select, .filters input { padding: 7px 12px; border: 1px solid #d1d5db; border-radius: 8px; font-size: 13px; background: #fff; }
   .filters select:focus, .filters input:focus { outline: none; border-color: #2563eb; }
-
   .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; padding: 20px 40px; }
   .card { background: #fff; border-radius: 12px; padding: 24px; box-shadow: 0 1px 4px rgba(0,0,0,.06); }
   .card h3 { font-size: 15px; font-weight: 600; color: #334155; margin-bottom: 16px; }
   .card.full { grid-column: 1 / -1; }
-
   .table-wrap { overflow-x: auto; }
   table { width: 100%; border-collapse: collapse; font-size: 13px; }
   th { background: #1a1a2e; color: #fff; padding: 10px 12px; text-align: center; font-weight: 600; position: sticky; top: 0; white-space: nowrap; cursor: pointer; user-select: none; }
@@ -39,9 +34,9 @@
   td { padding: 9px 12px; text-align: center; border-bottom: 1px solid #e5e7eb; white-space: nowrap; }
   tr:hover td { background: #f1f5f9; }
   td:first-child, td:nth-child(2) { text-align: left; }
-  .rank-badge { display: inline-block; width: 24px; height: 24px; border-radius: 50%; font-size: 11px; font-weight: 700; line-height: 24px; text-align: center; color: #fff; }
+  .rank-badge { display: inline-block; min-width: 28px; height: 24px; border-radius: 12px; font-size: 11px; font-weight: 700; line-height: 24px; text-align: center; color: #fff; padding: 0 4px; }
   .rank-1 { background: #f59e0b; } .rank-2 { background: #94a3b8; } .rank-3 { background: #b45309; }
-  .rank-n { background: #cbd5e1; color: #475569; }
+  .rank-top10 { background: #2563eb; } .rank-n { background: #cbd5e1; color: #475569; }
   .change-pos { color: #2563eb; font-weight: 600; } .change-neg { color: #dc2626; font-weight: 600; }
   .tag { display: inline-block; padding: 2px 8px; border-radius: 10px; font-size: 11px; font-weight: 500; }
   .tag-일반고 { background: #dbeafe; color: #1d4ed8; }
@@ -50,8 +45,12 @@
   .tag-특수목적고 { background: #dcfce7; color: #166534; }
   .tag-자율고 { background: #fce7f3; color: #9d174d; }
   .tag-기타 { background: #f1f5f9; color: #475569; }
-
   .chart-container { position: relative; height: 350px; }
+  .pagination { display: flex; gap: 6px; padding: 14px 0 4px; justify-content: center; flex-wrap: wrap; align-items: center; }
+  .pagination button { padding: 5px 11px; border: 1px solid #d1d5db; border-radius: 6px; background: #fff; font-size: 12px; cursor: pointer; }
+  .pagination button.active { background: #1a1a2e; color: #fff; border-color: #1a1a2e; }
+  .pagination button:hover:not(.active) { background: #f1f5f9; }
+  .page-info { text-align: center; font-size: 12px; color: #94a3b8; margin-top: 6px; }
   @media (max-width: 900px) { .grid { grid-template-columns: 1fr; } .kpi-row { padding: 12px 16px; } .grid, .filters, .header { padding-left: 16px; padding-right: 16px; } }
 </style>
 </head>
@@ -59,7 +58,7 @@
 
 <div class="header">
   <h1>고등학교별 지원/등록 현황 대시보드</h1>
-  <p>2024~2026학년도 3개년 지원인원 기준 상위 30개 고등학교 분석</p>
+  <p>2024~2026학년도 3개년 지원인원 기준 상위 100개 고등학교 분석 (전체 1,972개교 중)</p>
 </div>
 
 <div class="kpi-row" id="kpiRow"></div>
@@ -71,11 +70,17 @@
   <select id="filterType"><option value="">전체</option></select>
   <label>검색:</label>
   <input type="text" id="filterSearch" placeholder="고교명 검색...">
+  <label>페이지당:</label>
+  <select id="pageSize">
+    <option value="25">25개</option>
+    <option value="50">50개</option>
+    <option value="100">100개 (전체)</option>
+  </select>
 </div>
 
 <div class="grid">
   <div class="card full">
-    <h3>상위 30 고등학교 지원/등록 현황표</h3>
+    <h3>상위 100 고등학교 지원/등록 현황표</h3>
     <div class="table-wrap" style="max-height:600px; overflow-y:auto;">
       <table id="mainTable">
         <thead><tr>
@@ -97,6 +102,8 @@
         <tbody id="tableBody"></tbody>
       </table>
     </div>
+    <div class="pagination" id="pagination"></div>
+    <div class="page-info" id="pageInfo"></div>
   </div>
 
   <div class="card">
@@ -118,12 +125,12 @@
 </div>
 
 <script>
-const DATA = [{"rank":1,"school":"부산-고등학교졸업자격검정고시","region":"부산광역시","district":"검정고시","type":"검정고시","a24":139,"p24":129,"r24":43,"a25":173,"p25":156,"r25":52,"a26":189,"p26":155,"r26":69,"total_a":501,"total_r":164,"diff_a":16,"diff_r":17},{"rank":2,"school":"경기-고등학교졸업학력검정고시","region":"경기도","district":"검정고시","type":"검정고시","a24":44,"p24":40,"r24":14,"a25":44,"p25":41,"r25":19,"a26":51,"p26":33,"r26":17,"total_a":139,"total_r":50,"diff_a":7,"diff_r":-2},{"rank":3,"school":"경남-고등학교졸업학력검정고시","region":"경상남도","district":"검정고시","type":"검정고시","a24":33,"p24":30,"r24":13,"a25":33,"p25":33,"r25":8,"a26":53,"p26":46,"r26":17,"total_a":119,"total_r":38,"diff_a":20,"diff_r":9},{"rank":4,"school":"대진전자통신고등학교","region":"부산광역시","district":"금정구","type":"특성화고","a24":37,"p24":36,"r24":9,"a25":26,"p25":26,"r25":4,"a26":51,"p26":45,"r26":20,"total_a":114,"total_r":33,"diff_a":25,"diff_r":16},{"rank":5,"school":"외국고등학교","region":"기타","district":"해외","type":"기타","a24":40,"p24":27,"r24":18,"a25":31,"p25":26,"r25":19,"a26":42,"p26":31,"r26":15,"total_a":113,"total_r":52,"diff_a":11,"diff_r":-4},{"rank":6,"school":"서울-고등학교졸업자격검정고시","region":"서울특별시","district":"검정고시","type":"검정고시","a24":43,"p24":37,"r24":11,"a25":34,"p25":31,"r25":5,"a26":33,"p26":27,"r26":13,"total_a":110,"total_r":29,"diff_a":-1,"diff_r":8},{"rank":7,"school":"정관고등학교","region":"부산광역시","district":"기장군","type":"일반고","a24":33,"p24":31,"r24":8,"a25":48,"p25":44,"r25":8,"a26":29,"p26":16,"r26":5,"total_a":110,"total_r":21,"diff_a":-19,"diff_r":-3},{"rank":8,"school":"내성고등학교","region":"부산광역시","district":"금정구","type":"일반고","a24":40,"p24":35,"r24":11,"a25":22,"p25":18,"r25":5,"a26":44,"p26":35,"r26":12,"total_a":106,"total_r":28,"diff_a":22,"diff_r":7},{"rank":9,"school":"서창고등학교","region":"경상남도","district":"양산시","type":"일반고","a24":35,"p24":33,"r24":12,"a25":28,"p25":27,"r25":7,"a26":35,"p26":29,"r26":10,"total_a":98,"total_r":29,"diff_a":7,"diff_r":3},{"rank":10,"school":"해운대관광고등학교","region":"부산광역시","district":"해운대구","type":"특성화고","a24":25,"p24":21,"r24":4,"a25":41,"p25":29,"r25":10,"a26":31,"p26":30,"r26":8,"total_a":97,"total_r":22,"diff_a":-10,"diff_r":-2},{"rank":11,"school":"신정고등학교","region":"부산광역시","district":"기장군","type":"일반고","a24":37,"p24":35,"r24":11,"a25":40,"p25":37,"r25":11,"a26":19,"p26":11,"r26":5,"total_a":96,"total_r":27,"diff_a":-21,"diff_r":-6},{"rank":12,"school":"양산여자고등학교","region":"경상남도","district":"양산시","type":"일반고","a24":14,"p24":14,"r24":6,"a25":35,"p25":31,"r25":14,"a26":39,"p26":31,"r26":9,"total_a":88,"total_r":29,"diff_a":4,"diff_r":-5},{"rank":13,"school":"부산마케팅고등학교","region":"부산광역시","district":"부산진구","type":"특성화고","a24":34,"p24":30,"r24":9,"a25":36,"p25":30,"r25":5,"a26":15,"p26":13,"r26":4,"total_a":85,"total_r":18,"diff_a":-21,"diff_r":-1},{"rank":14,"school":"부산컴퓨터과학고등학교","region":"부산광역시","district":"동구","type":"특성화고","a24":28,"p24":26,"r24":6,"a25":36,"p25":34,"r25":7,"a26":19,"p26":17,"r26":3,"total_a":83,"total_r":16,"diff_a":-17,"diff_r":-4},{"rank":15,"school":"부산정보관광고등학교","region":"부산광역시","district":"금정구","type":"특성화고","a24":31,"p24":28,"r24":9,"a25":22,"p25":18,"r25":6,"a26":27,"p26":25,"r26":5,"total_a":80,"total_r":20,"diff_a":5,"diff_r":-1},{"rank":16,"school":"부산진여자상업고등학교","region":"부산광역시","district":"부산진구","type":"특성화고","a24":30,"p24":29,"r24":8,"a25":32,"p25":28,"r25":8,"a26":17,"p26":16,"r26":4,"total_a":79,"total_r":20,"diff_a":-15,"diff_r":-4},{"rank":17,"school":"동래원예고등학교","region":"부산광역시","district":"동래구","type":"특성화고","a24":32,"p24":31,"r24":9,"a25":21,"p25":20,"r25":4,"a26":22,"p26":20,"r26":7,"total_a":75,"total_r":20,"diff_a":1,"diff_r":3},{"rank":18,"school":"학력인정부산예원고등학교(2년제)","region":"부산광역시","district":"금정구","type":"기타","a24":39,"p24":39,"r24":6,"a25":21,"p25":21,"r25":6,"a26":14,"p26":13,"r26":6,"total_a":74,"total_r":18,"diff_a":-7,"diff_r":0},{"rank":19,"school":"부산전자공업고등학교","region":"부산광역시","district":"동래구","type":"특성화고","a24":26,"p24":25,"r24":7,"a25":25,"p25":24,"r25":7,"a26":21,"p26":21,"r26":6,"total_a":72,"total_r":20,"diff_a":-4,"diff_r":-1},{"rank":20,"school":"효암고등학교","region":"경상남도","district":"양산시","type":"일반고","a24":23,"p24":23,"r24":10,"a25":24,"p25":22,"r25":5,"a26":25,"p26":21,"r26":7,"total_a":72,"total_r":22,"diff_a":1,"diff_r":2},{"rank":21,"school":"양산고등학교","region":"경상남도","district":"양산시","type":"자율고","a24":39,"p24":36,"r24":5,"a25":14,"p25":13,"r25":5,"a26":19,"p26":16,"r26":7,"total_a":72,"total_r":17,"diff_a":5,"diff_r":2},{"rank":22,"school":"금샘고등학교","region":"부산광역시","district":"금정구","type":"특성화고","a24":21,"p24":21,"r24":4,"a25":32,"p25":25,"r25":7,"a26":17,"p26":15,"r26":7,"total_a":70,"total_r":18,"diff_a":-15,"diff_r":0},{"rank":23,"school":"부산여자상업고등학교","region":"부산광역시","district":"수영구","type":"특성화고","a24":22,"p24":22,"r24":5,"a25":27,"p25":22,"r25":6,"a26":21,"p26":18,"r26":7,"total_a":70,"total_r":18,"diff_a":-6,"diff_r":1},{"rank":24,"school":"물금고등학교","region":"경상남도","district":"양산시","type":"일반고","a24":23,"p24":22,"r24":8,"a25":23,"p25":17,"r25":5,"a26":24,"p26":19,"r26":8,"total_a":70,"total_r":21,"diff_a":1,"diff_r":3},{"rank":25,"school":"부산대학교사범대학부설고등학교","region":"부산광역시","district":"금정구","type":"일반고","a24":18,"p24":18,"r24":8,"a25":25,"p25":21,"r25":9,"a26":26,"p26":22,"r26":11,"total_a":69,"total_r":28,"diff_a":1,"diff_r":2},{"rank":26,"school":"외국고등학교","region":"기타","district":"해외","type":"기타","a24":35,"p24":31,"r24":28,"a25":34,"p25":34,"r25":34,"a26":0,"p26":0,"r26":0,"total_a":69,"total_r":62,"diff_a":-34,"diff_r":-34},{"rank":27,"school":"남산고등학교","region":"부산광역시","district":"금정구","type":"일반고","a24":21,"p24":17,"r24":4,"a25":22,"p25":15,"r25":5,"a26":25,"p26":12,"r26":2,"total_a":68,"total_r":11,"diff_a":3,"diff_r":-3},{"rank":28,"school":"청주외국어고등학교","region":"충청북도","district":"청주시","type":"특수목적고","a24":25,"p24":25,"r24":8,"a25":21,"p25":21,"r25":9,"a26":22,"p26":19,"r26":8,"total_a":68,"total_r":25,"diff_a":1,"diff_r":-1},{"rank":29,"school":"부산정보고등학교","region":"부산광역시","district":"부산진구","type":"특성화고","a24":24,"p24":21,"r24":6,"a25":17,"p25":12,"r25":2,"a26":25,"p26":22,"r26":6,"total_a":66,"total_r":14,"diff_a":8,"diff_r":4},{"rank":30,"school":"울산-고등학교졸업학력검정고시","region":"울산광역시","district":"검정고시","type":"검정고시","a24":17,"p24":17,"r24":7,"a25":20,"p25":16,"r25":5,"a26":29,"p26":21,"r26":11,"total_a":66,"total_r":23,"diff_a":9,"diff_r":6}];
+const DATA = [{"rank": 1, "school": "부산-고등학교졸업자격검정고시", "region": "부산광역시", "district": "검정고시", "type": "검정고시", "a24": 139, "p24": 129, "r24": 43, "a25": 173, "p25": 156, "r25": 52, "a26": 189, "p26": 155, "r26": 69, "total_a": 501, "total_r": 164, "diff_a": 16, "diff_r": 17}, {"rank": 2, "school": "경기-고등학교졸업학력검정고시", "region": "경기도", "district": "검정고시", "type": "검정고시", "a24": 44, "p24": 40, "r24": 14, "a25": 44, "p25": 41, "r25": 19, "a26": 51, "p26": 33, "r26": 17, "total_a": 139, "total_r": 50, "diff_a": 7, "diff_r": -2}, {"rank": 3, "school": "경남-고등학교졸업학력검정고시", "region": "경상남도", "district": "검정고시", "type": "검정고시", "a24": 33, "p24": 30, "r24": 13, "a25": 33, "p25": 33, "r25": 8, "a26": 53, "p26": 46, "r26": 17, "total_a": 119, "total_r": 38, "diff_a": 20, "diff_r": 9}, {"rank": 4, "school": "대진전자통신고등학교", "region": "부산광역시", "district": "금정구", "type": "특성화고", "a24": 37, "p24": 36, "r24": 9, "a25": 26, "p25": 26, "r25": 4, "a26": 51, "p26": 45, "r26": 20, "total_a": 114, "total_r": 33, "diff_a": 25, "diff_r": 16}, {"rank": 5, "school": "외국고등학교", "region": "기타", "district": "해외", "type": "기타", "a24": 40, "p24": 27, "r24": 18, "a25": 31, "p25": 26, "r25": 19, "a26": 42, "p26": 31, "r26": 15, "total_a": 113, "total_r": 52, "diff_a": 11, "diff_r": -4}, {"rank": 6, "school": "서울-고등학교졸업자격검정고시", "region": "서울특별시", "district": "검정고시", "type": "검정고시", "a24": 43, "p24": 37, "r24": 11, "a25": 34, "p25": 31, "r25": 5, "a26": 33, "p26": 27, "r26": 13, "total_a": 110, "total_r": 29, "diff_a": -1, "diff_r": 8}, {"rank": 6, "school": "정관고등학교", "region": "부산광역시", "district": "기장군", "type": "일반고", "a24": 33, "p24": 31, "r24": 8, "a25": 48, "p25": 44, "r25": 8, "a26": 29, "p26": 16, "r26": 5, "total_a": 110, "total_r": 21, "diff_a": -19, "diff_r": -3}, {"rank": 8, "school": "내성고등학교", "region": "부산광역시", "district": "금정구", "type": "일반고", "a24": 40, "p24": 35, "r24": 11, "a25": 22, "p25": 18, "r25": 5, "a26": 44, "p26": 35, "r26": 12, "total_a": 106, "total_r": 28, "diff_a": 22, "diff_r": 7}, {"rank": 9, "school": "서창고등학교", "region": "경상남도", "district": "양산시", "type": "일반고", "a24": 35, "p24": 33, "r24": 12, "a25": 28, "p25": 27, "r25": 7, "a26": 35, "p26": 29, "r26": 10, "total_a": 98, "total_r": 29, "diff_a": 7, "diff_r": 3}, {"rank": 10, "school": "해운대관광고등학교", "region": "부산광역시", "district": "해운대구", "type": "특성화고", "a24": 25, "p24": 21, "r24": 4, "a25": 41, "p25": 29, "r25": 10, "a26": 31, "p26": 30, "r26": 8, "total_a": 97, "total_r": 22, "diff_a": -10, "diff_r": -2}, {"rank": 11, "school": "신정고등학교", "region": "부산광역시", "district": "기장군", "type": "일반고", "a24": 37, "p24": 35, "r24": 11, "a25": 40, "p25": 37, "r25": 11, "a26": 19, "p26": 11, "r26": 5, "total_a": 96, "total_r": 27, "diff_a": -21, "diff_r": -6}, {"rank": 12, "school": "양산여자고등학교", "region": "경상남도", "district": "양산시", "type": "일반고", "a24": 14, "p24": 14, "r24": 6, "a25": 35, "p25": 31, "r25": 14, "a26": 39, "p26": 31, "r26": 9, "total_a": 88, "total_r": 29, "diff_a": 4, "diff_r": -5}, {"rank": 13, "school": "부산마케팅고등학교", "region": "부산광역시", "district": "부산진구", "type": "특성화고", "a24": 34, "p24": 30, "r24": 9, "a25": 36, "p25": 30, "r25": 5, "a26": 15, "p26": 13, "r26": 4, "total_a": 85, "total_r": 18, "diff_a": -21, "diff_r": -1}, {"rank": 14, "school": "부산컴퓨터과학고등학교", "region": "부산광역시", "district": "동구", "type": "특성화고", "a24": 28, "p24": 26, "r24": 6, "a25": 36, "p25": 34, "r25": 7, "a26": 19, "p26": 17, "r26": 3, "total_a": 83, "total_r": 16, "diff_a": -17, "diff_r": -4}, {"rank": 15, "school": "부산정보관광고등학교", "region": "부산광역시", "district": "금정구", "type": "특성화고", "a24": 31, "p24": 28, "r24": 9, "a25": 22, "p25": 18, "r25": 6, "a26": 27, "p26": 25, "r26": 5, "total_a": 80, "total_r": 20, "diff_a": 5, "diff_r": -1}, {"rank": 16, "school": "부산진여자상업고등학교", "region": "부산광역시", "district": "부산진구", "type": "특성화고", "a24": 30, "p24": 29, "r24": 8, "a25": 32, "p25": 28, "r25": 8, "a26": 17, "p26": 16, "r26": 4, "total_a": 79, "total_r": 20, "diff_a": -15, "diff_r": -4}, {"rank": 17, "school": "동래원예고등학교", "region": "부산광역시", "district": "동래구", "type": "특성화고", "a24": 32, "p24": 31, "r24": 9, "a25": 21, "p25": 20, "r25": 4, "a26": 22, "p26": 20, "r26": 7, "total_a": 75, "total_r": 20, "diff_a": 1, "diff_r": 3}, {"rank": 18, "school": "학력인정부산예원고등학교(2년제)", "region": "부산광역시", "district": "금정구", "type": "기타", "a24": 39, "p24": 39, "r24": 6, "a25": 21, "p25": 21, "r25": 6, "a26": 14, "p26": 13, "r26": 6, "total_a": 74, "total_r": 18, "diff_a": -7, "diff_r": 0}, {"rank": 19, "school": "부산전자공업고등학교", "region": "부산광역시", "district": "동래구", "type": "특성화고", "a24": 26, "p24": 25, "r24": 7, "a25": 25, "p25": 24, "r25": 7, "a26": 21, "p26": 21, "r26": 6, "total_a": 72, "total_r": 20, "diff_a": -4, "diff_r": -1}, {"rank": 19, "school": "효암고등학교", "region": "경상남도", "district": "양산시", "type": "일반고", "a24": 23, "p24": 23, "r24": 10, "a25": 24, "p25": 22, "r25": 5, "a26": 25, "p26": 21, "r26": 7, "total_a": 72, "total_r": 22, "diff_a": 1, "diff_r": 2}, {"rank": 19, "school": "양산고등학교", "region": "경상남도", "district": "양산시", "type": "자율고", "a24": 39, "p24": 36, "r24": 5, "a25": 14, "p25": 13, "r25": 5, "a26": 19, "p26": 16, "r26": 7, "total_a": 72, "total_r": 17, "diff_a": 5, "diff_r": 2}, {"rank": 22, "school": "금샘고등학교", "region": "부산광역시", "district": "금정구", "type": "특성화고", "a24": 21, "p24": 21, "r24": 4, "a25": 32, "p25": 25, "r25": 7, "a26": 17, "p26": 15, "r26": 7, "total_a": 70, "total_r": 18, "diff_a": -15, "diff_r": 0}, {"rank": 22, "school": "부산여자상업고등학교", "region": "부산광역시", "district": "수영구", "type": "특성화고", "a24": 22, "p24": 22, "r24": 5, "a25": 27, "p25": 22, "r25": 6, "a26": 21, "p26": 18, "r26": 7, "total_a": 70, "total_r": 18, "diff_a": -6, "diff_r": 1}, {"rank": 22, "school": "물금고등학교", "region": "경상남도", "district": "양산시", "type": "일반고", "a24": 23, "p24": 22, "r24": 8, "a25": 23, "p25": 17, "r25": 5, "a26": 24, "p26": 19, "r26": 8, "total_a": 70, "total_r": 21, "diff_a": 1, "diff_r": 3}, {"rank": 25, "school": "부산대학교사범대학부설고등학교", "region": "부산광역시", "district": "금정구", "type": "일반고", "a24": 18, "p24": 18, "r24": 8, "a25": 25, "p25": 21, "r25": 9, "a26": 26, "p26": 22, "r26": 11, "total_a": 69, "total_r": 28, "diff_a": 1, "diff_r": 2}, {"rank": 25, "school": "외국고등학교", "region": "기타", "district": "해외", "type": "기타", "a24": 35, "p24": 31, "r24": 28, "a25": 34, "p25": 34, "r25": 34, "a26": 0, "p26": 0, "r26": 0, "total_a": 69, "total_r": 62, "diff_a": -34, "diff_r": -34}, {"rank": 27, "school": "남산고등학교", "region": "부산광역시", "district": "금정구", "type": "일반고", "a24": 21, "p24": 17, "r24": 4, "a25": 22, "p25": 15, "r25": 5, "a26": 25, "p26": 12, "r26": 2, "total_a": 68, "total_r": 11, "diff_a": 3, "diff_r": -3}, {"rank": 27, "school": "청주외국어고등학교", "region": "충청북도", "district": "청주시", "type": "특수목적고", "a24": 25, "p24": 25, "r24": 8, "a25": 21, "p25": 21, "r25": 9, "a26": 22, "p26": 19, "r26": 8, "total_a": 68, "total_r": 25, "diff_a": 1, "diff_r": -1}, {"rank": 29, "school": "부산정보고등학교", "region": "부산광역시", "district": "부산진구", "type": "특성화고", "a24": 24, "p24": 21, "r24": 6, "a25": 17, "p25": 12, "r25": 2, "a26": 25, "p26": 22, "r26": 6, "total_a": 66, "total_r": 14, "diff_a": 8, "diff_r": 4}, {"rank": 29, "school": "울산-고등학교졸업학력검정고시", "region": "울산광역시", "district": "검정고시", "type": "검정고시", "a24": 17, "p24": 17, "r24": 7, "a25": 20, "p25": 16, "r25": 5, "a26": 29, "p26": 21, "r26": 11, "total_a": 66, "total_r": 23, "diff_a": 9, "diff_r": 6}, {"rank": 29, "school": "웅상고등학교", "region": "경상남도", "district": "양산시", "type": "일반고", "a24": 24, "p24": 23, "r24": 5, "a25": 24, "p25": 19, "r25": 5, "a26": 18, "p26": 12, "r26": 6, "total_a": 66, "total_r": 16, "diff_a": -6, "diff_r": 1}, {"rank": 32, "school": "양산남부고등학교", "region": "경상남도", "district": "양산시", "type": "일반고", "a24": 26, "p24": 24, "r24": 8, "a25": 17, "p25": 11, "r25": 6, "a26": 22, "p26": 18, "r26": 3, "total_a": 65, "total_r": 17, "diff_a": 5, "diff_r": -3}, {"rank": 33, "school": "부흥고등학교", "region": "부산광역시", "district": "해운대구", "type": "일반고", "a24": 23, "p24": 19, "r24": 5, "a25": 21, "p25": 19, "r25": 5, "a26": 20, "p26": 10, "r26": 7, "total_a": 64, "total_r": 17, "diff_a": -1, "diff_r": 2}, {"rank": 34, "school": "성지고등학교", "region": "부산광역시", "district": "남구", "type": "일반고", "a24": 16, "p24": 16, "r24": 1, "a25": 10, "p25": 10, "r25": 6, "a26": 37, "p26": 31, "r26": 13, "total_a": 63, "total_r": 20, "diff_a": 27, "diff_r": 7}, {"rank": 35, "school": "부산중앙여자고등학교", "region": "부산광역시", "district": "동래구", "type": "일반고", "a24": 16, "p24": 16, "r24": 2, "a25": 23, "p25": 20, "r25": 12, "a26": 22, "p26": 14, "r26": 7, "total_a": 61, "total_r": 21, "diff_a": -1, "diff_r": -5}, {"rank": 35, "school": "영산고등학교", "region": "부산광역시", "district": "해운대구", "type": "특성화고", "a24": 28, "p24": 26, "r24": 6, "a25": 24, "p25": 22, "r25": 7, "a26": 9, "p26": 9, "r26": 2, "total_a": 61, "total_r": 15, "diff_a": -15, "diff_r": -5}, {"rank": 37, "school": "대명여자고등학교", "region": "부산광역시", "district": "동래구", "type": "일반고", "a24": 18, "p24": 18, "r24": 9, "a25": 18, "p25": 16, "r25": 5, "a26": 21, "p26": 13, "r26": 4, "total_a": 57, "total_r": 18, "diff_a": 3, "diff_r": -1}, {"rank": 38, "school": "부산여자고등학교", "region": "부산광역시", "district": "사하구", "type": "일반고", "a24": 12, "p24": 12, "r24": 4, "a25": 23, "p25": 18, "r25": 6, "a26": 21, "p26": 15, "r26": 4, "total_a": 56, "total_r": 14, "diff_a": -2, "diff_r": -2}, {"rank": 39, "school": "세정고등학교", "region": "부산광역시", "district": "부산진구", "type": "특성화고", "a24": 19, "p24": 15, "r24": 2, "a25": 20, "p25": 13, "r25": 3, "a26": 16, "p26": 14, "r26": 2, "total_a": 55, "total_r": 7, "diff_a": -4, "diff_r": -1}, {"rank": 40, "school": "동래고등학교", "region": "부산광역시", "district": "동래구", "type": "일반고", "a24": 16, "p24": 16, "r24": 6, "a25": 14, "p25": 11, "r25": 5, "a26": 24, "p26": 13, "r26": 7, "total_a": 54, "total_r": 18, "diff_a": 10, "diff_r": 2}, {"rank": 41, "school": "기장고등학교", "region": "부산광역시", "district": "기장군", "type": "일반고", "a24": 14, "p24": 12, "r24": 2, "a25": 23, "p25": 18, "r25": 2, "a26": 16, "p26": 8, "r26": 1, "total_a": 53, "total_r": 5, "diff_a": -7, "diff_r": -1}, {"rank": 42, "school": "연초고등학교", "region": "경상남도", "district": "거제시", "type": "일반고", "a24": 10, "p24": 9, "r24": 6, "a25": 19, "p25": 17, "r25": 5, "a26": 23, "p26": 17, "r26": 4, "total_a": 52, "total_r": 15, "diff_a": 4, "diff_r": -1}, {"rank": 43, "school": "혜화여자고등학교", "region": "부산광역시", "district": "동래구", "type": "일반고", "a24": 8, "p24": 8, "r24": 2, "a25": 18, "p25": 17, "r25": 3, "a26": 25, "p26": 19, "r26": 7, "total_a": 51, "total_r": 12, "diff_a": 7, "diff_r": 4}, {"rank": 44, "school": "세연고등학교", "region": "부산광역시", "district": "남구", "type": "특성화고", "a24": 20, "p24": 19, "r24": 1, "a25": 15, "p25": 13, "r25": 4, "a26": 15, "p26": 11, "r26": 4, "total_a": 50, "total_r": 9, "diff_a": 0, "diff_r": 0}, {"rank": 44, "school": "김해경원고등학교", "region": "경상남도", "district": "김해시", "type": "자율고", "a24": 18, "p24": 16, "r24": 6, "a25": 13, "p25": 9, "r25": 4, "a26": 19, "p26": 13, "r26": 4, "total_a": 50, "total_r": 14, "diff_a": 6, "diff_r": 0}, {"rank": 44, "school": "대기고등학교", "region": "제주특별자치도", "district": "제주시", "type": "일반고", "a24": 18, "p24": 18, "r24": 3, "a25": 15, "p25": 10, "r25": 3, "a26": 17, "p26": 15, "r26": 4, "total_a": 50, "total_r": 10, "diff_a": 2, "diff_r": 1}, {"rank": 47, "school": "부산영상예술고등학교", "region": "부산광역시", "district": "영도구", "type": "특성화고", "a24": 23, "p24": 22, "r24": 9, "a25": 14, "p25": 12, "r25": 5, "a26": 12, "p26": 9, "r26": 4, "total_a": 49, "total_r": 18, "diff_a": -2, "diff_r": -1}, {"rank": 47, "school": "해강고등학교", "region": "부산광역시", "district": "해운대구", "type": "일반고", "a24": 16, "p24": 16, "r24": 5, "a25": 10, "p25": 9, "r25": 4, "a26": 23, "p26": 13, "r26": 2, "total_a": 49, "total_r": 11, "diff_a": 13, "diff_r": -2}, {"rank": 47, "school": "반여고등학교", "region": "부산광역시", "district": "해운대구", "type": "일반고", "a24": 17, "p24": 14, "r24": 4, "a25": 15, "p25": 11, "r25": 3, "a26": 17, "p26": 10, "r26": 1, "total_a": 49, "total_r": 8, "diff_a": 2, "diff_r": -2}, {"rank": 50, "school": "부산공업고등학교", "region": "부산광역시", "district": "남구", "type": "특성화고", "a24": 15, "p24": 12, "r24": 2, "a25": 11, "p25": 9, "r25": 3, "a26": 22, "p26": 18, "r26": 6, "total_a": 48, "total_r": 11, "diff_a": 11, "diff_r": 3}, {"rank": 50, "school": "충렬고등학교", "region": "부산광역시", "district": "동래구", "type": "일반고", "a24": 14, "p24": 14, "r24": 4, "a25": 20, "p25": 17, "r25": 3, "a26": 14, "p26": 9, "r26": 3, "total_a": 48, "total_r": 10, "diff_a": -6, "diff_r": 0}, {"rank": 50, "school": "삼정고등학교", "region": "부산광역시", "district": "북구", "type": "일반고", "a24": 12, "p24": 12, "r24": 1, "a25": 19, "p25": 17, "r25": 7, "a26": 17, "p26": 13, "r26": 6, "total_a": 48, "total_r": 14, "diff_a": -2, "diff_r": -1}, {"rank": 50, "school": "연제고등학교", "region": "부산광역시", "district": "연제구", "type": "일반고", "a24": 13, "p24": 12, "r24": 2, "a25": 15, "p25": 11, "r25": 2, "a26": 20, "p26": 15, "r26": 5, "total_a": 48, "total_r": 9, "diff_a": 5, "diff_r": 3}, {"rank": 50, "school": "인천-고등학교졸업자격검정고시", "region": "인천광역시", "district": "검정고시", "type": "검정고시", "a24": 19, "p24": 19, "r24": 6, "a25": 18, "p25": 14, "r25": 4, "a26": 11, "p26": 7, "r26": 1, "total_a": 48, "total_r": 11, "diff_a": -7, "diff_r": -3}, {"rank": 50, "school": "김해가야고등학교", "region": "경상남도", "district": "김해시", "type": "일반고", "a24": 11, "p24": 11, "r24": 2, "a25": 22, "p25": 19, "r25": 7, "a26": 15, "p26": 15, "r26": 7, "total_a": 48, "total_r": 16, "diff_a": -7, "diff_r": 0}, {"rank": 56, "school": "진해여자고등학교", "region": "경상남도", "district": "창원시 진해구", "type": "일반고", "a24": 9, "p24": 9, "r24": 4, "a25": 12, "p25": 12, "r25": 6, "a26": 26, "p26": 19, "r26": 4, "total_a": 47, "total_r": 14, "diff_a": 14, "diff_r": -2}, {"rank": 57, "school": "이사벨고등학교", "region": "부산광역시", "district": "연제구", "type": "일반고", "a24": 16, "p24": 15, "r24": 6, "a25": 13, "p25": 10, "r25": 3, "a26": 17, "p26": 11, "r26": 6, "total_a": 46, "total_r": 15, "diff_a": 4, "diff_r": 3}, {"rank": 57, "school": "부산문화여자고등학교", "region": "부산광역시", "district": "해운대구", "type": "특성화고", "a24": 15, "p24": 14, "r24": 5, "a25": 15, "p25": 12, "r25": 1, "a26": 16, "p26": 15, "r26": 6, "total_a": 46, "total_r": 12, "diff_a": 1, "diff_r": 5}, {"rank": 59, "school": "학력인정부산예원고등학교", "region": "부산광역시", "district": "금정구", "type": "기타", "a24": 15, "p24": 15, "r24": 3, "a25": 14, "p25": 11, "r25": 1, "a26": 16, "p26": 10, "r26": 4, "total_a": 45, "total_r": 8, "diff_a": 2, "diff_r": 3}, {"rank": 59, "school": "금정여자고등학교", "region": "부산광역시", "district": "금정구", "type": "일반고", "a24": 18, "p24": 15, "r24": 4, "a25": 13, "p25": 13, "r25": 1, "a26": 14, "p26": 13, "r26": 1, "total_a": 45, "total_r": 6, "diff_a": 1, "diff_r": 0}, {"rank": 59, "school": "사직여자고등학교", "region": "부산광역시", "district": "동래구", "type": "일반고", "a24": 10, "p24": 10, "r24": 3, "a25": 10, "p25": 8, "r25": 1, "a26": 25, "p26": 18, "r26": 8, "total_a": 45, "total_r": 12, "diff_a": 15, "diff_r": 7}, {"rank": 59, "school": "경남공업고등학교", "region": "부산광역시", "district": "부산진구", "type": "특성화고", "a24": 17, "p24": 15, "r24": 3, "a25": 13, "p25": 12, "r25": 3, "a26": 15, "p26": 14, "r26": 3, "total_a": 45, "total_r": 9, "diff_a": 2, "diff_r": 0}, {"rank": 59, "school": "주례여자고등학교", "region": "부산광역시", "district": "사상구", "type": "일반고", "a24": 12, "p24": 11, "r24": 3, "a25": 14, "p25": 13, "r25": 4, "a26": 19, "p26": 15, "r26": 4, "total_a": 45, "total_r": 11, "diff_a": 5, "diff_r": 0}, {"rank": 64, "school": "양산제일고등학교", "region": "경상남도", "district": "양산시", "type": "일반고", "a24": 18, "p24": 15, "r24": 7, "a25": 7, "p25": 7, "r25": 3, "a26": 19, "p26": 8, "r26": 1, "total_a": 44, "total_r": 11, "diff_a": 12, "diff_r": -2}, {"rank": 64, "school": "범어고등학교", "region": "경상남도", "district": "양산시", "type": "일반고", "a24": 11, "p24": 10, "r24": 3, "a25": 15, "p25": 14, "r25": 4, "a26": 18, "p26": 13, "r26": 5, "total_a": 44, "total_r": 12, "diff_a": 3, "diff_r": 1}, {"rank": 66, "school": "동래여자고등학교", "region": "부산광역시", "district": "금정구", "type": "일반고", "a24": 9, "p24": 9, "r24": 3, "a25": 19, "p25": 18, "r25": 7, "a26": 15, "p26": 14, "r26": 7, "total_a": 43, "total_r": 17, "diff_a": -4, "diff_r": 0}, {"rank": 66, "school": "부산보건고등학교", "region": "부산광역시", "district": "영도구", "type": "특성화고", "a24": 11, "p24": 8, "r24": 2, "a25": 18, "p25": 15, "r25": 7, "a26": 14, "p26": 14, "r26": 3, "total_a": 43, "total_r": 12, "diff_a": -4, "diff_r": -4}, {"rank": 66, "school": "대구-고등학교졸업자격검정고시", "region": "대구광역시", "district": "검정고시", "type": "검정고시", "a24": 11, "p24": 10, "r24": 6, "a25": 18, "p25": 15, "r25": 4, "a26": 14, "p26": 10, "r26": 3, "total_a": 43, "total_r": 13, "diff_a": -4, "diff_r": -1}, {"rank": 69, "school": "동의고등학교", "region": "부산광역시", "district": "부산진구", "type": "특성화고", "a24": 2, "p24": 2, "r24": 0, "a25": 19, "p25": 18, "r25": 4, "a26": 21, "p26": 18, "r26": 4, "total_a": 42, "total_r": 8, "diff_a": 2, "diff_r": 0}, {"rank": 69, "school": "부일외국어고등학교", "region": "부산광역시", "district": "사하구", "type": "특수목적고", "a24": 11, "p24": 11, "r24": 2, "a25": 17, "p25": 14, "r25": 2, "a26": 14, "p26": 4, "r26": 2, "total_a": 42, "total_r": 6, "diff_a": -3, "diff_r": 0}, {"rank": 69, "school": "부경고등학교", "region": "부산광역시", "district": "서구", "type": "일반고", "a24": 11, "p24": 11, "r24": 3, "a25": 14, "p25": 14, "r25": 2, "a26": 17, "p26": 15, "r26": 3, "total_a": 42, "total_r": 8, "diff_a": 3, "diff_r": 1}, {"rank": 69, "school": "영도여자고등학교", "region": "부산광역시", "district": "영도구", "type": "일반고", "a24": 13, "p24": 11, "r24": 2, "a25": 14, "p25": 13, "r25": 5, "a26": 15, "p26": 14, "r26": 5, "total_a": 42, "total_r": 12, "diff_a": 1, "diff_r": 0}, {"rank": 69, "school": "김해삼문고등학교", "region": "경상남도", "district": "김해시", "type": "일반고", "a24": 6, "p24": 4, "r24": 1, "a25": 17, "p25": 13, "r25": 3, "a26": 19, "p26": 16, "r26": 7, "total_a": 42, "total_r": 11, "diff_a": 2, "diff_r": 4}, {"rank": 74, "school": "대양고등학교", "region": "부산광역시", "district": "남구", "type": "특성화고", "a24": 14, "p24": 13, "r24": 4, "a25": 6, "p25": 6, "r25": 3, "a26": 21, "p26": 19, "r26": 4, "total_a": 41, "total_r": 11, "diff_a": 15, "diff_r": 1}, {"rank": 74, "school": "낙동고등학교", "region": "부산광역시", "district": "북구", "type": "일반고", "a24": 20, "p24": 18, "r24": 3, "a25": 10, "p25": 7, "r25": 1, "a26": 11, "p26": 7, "r26": 2, "total_a": 41, "total_r": 6, "diff_a": 1, "diff_r": 1}, {"rank": 74, "school": "양운고등학교", "region": "부산광역시", "district": "해운대구", "type": "일반고", "a24": 10, "p24": 10, "r24": 5, "a25": 11, "p25": 11, "r25": 4, "a26": 20, "p26": 6, "r26": 2, "total_a": 41, "total_r": 11, "diff_a": 9, "diff_r": -2}, {"rank": 74, "school": "센텀고등학교", "region": "부산광역시", "district": "해운대구", "type": "일반고", "a24": 12, "p24": 12, "r24": 2, "a25": 12, "p25": 6, "r25": 1, "a26": 17, "p26": 10, "r26": 2, "total_a": 41, "total_r": 5, "diff_a": 5, "diff_r": 1}, {"rank": 78, "school": "동인고등학교", "region": "부산광역시", "district": "동래구", "type": "일반고", "a24": 13, "p24": 13, "r24": 3, "a25": 11, "p25": 9, "r25": 4, "a26": 16, "p26": 10, "r26": 5, "total_a": 40, "total_r": 12, "diff_a": 5, "diff_r": 1}, {"rank": 79, "school": "금곡고등학교", "region": "부산광역시", "district": "북구", "type": "일반고", "a24": 10, "p24": 10, "r24": 4, "a25": 9, "p25": 7, "r25": 2, "a26": 20, "p26": 8, "r26": 3, "total_a": 39, "total_r": 9, "diff_a": 11, "diff_r": 1}, {"rank": 79, "school": "우신고등학교", "region": "울산광역시", "district": "남구", "type": "일반고", "a24": 15, "p24": 15, "r24": 2, "a25": 8, "p25": 6, "r25": 2, "a26": 16, "p26": 10, "r26": 3, "total_a": 39, "total_r": 7, "diff_a": 8, "diff_r": 1}, {"rank": 79, "school": "김해수남고등학교", "region": "경상남도", "district": "김해시", "type": "일반고", "a24": 18, "p24": 18, "r24": 5, "a25": 12, "p25": 11, "r25": 3, "a26": 9, "p26": 6, "r26": 3, "total_a": 39, "total_r": 11, "diff_a": -3, "diff_r": 0}, {"rank": 79, "school": "증산고등학교", "region": "경상남도", "district": "양산시", "type": "일반고", "a24": 0, "p24": 0, "r24": 0, "a25": 0, "p25": 0, "r25": 0, "a26": 39, "p26": 34, "r26": 14, "total_a": 39, "total_r": 14, "diff_a": 39, "diff_r": 14}, {"rank": 83, "school": "동명공업고등학교", "region": "부산광역시", "district": "남구", "type": "특성화고", "a24": 11, "p24": 11, "r24": 2, "a25": 12, "p25": 9, "r25": 3, "a26": 15, "p26": 13, "r26": 7, "total_a": 38, "total_r": 12, "diff_a": 3, "diff_r": 4}, {"rank": 83, "school": "성모여자고등학교", "region": "부산광역시", "district": "부산진구", "type": "일반고", "a24": 16, "p24": 16, "r24": 2, "a25": 13, "p25": 12, "r25": 4, "a26": 9, "p26": 6, "r26": 3, "total_a": 38, "total_r": 9, "diff_a": -4, "diff_r": -1}, {"rank": 83, "school": "부산동여자고등학교", "region": "부산광역시", "district": "수영구", "type": "일반고", "a24": 13, "p24": 11, "r24": 2, "a25": 8, "p25": 7, "r25": 3, "a26": 17, "p26": 9, "r26": 3, "total_a": 38, "total_r": 8, "diff_a": 9, "diff_r": 0}, {"rank": 83, "school": "덕문여자고등학교", "region": "부산광역시", "district": "수영구", "type": "일반고", "a24": 14, "p24": 14, "r24": 7, "a25": 10, "p25": 7, "r25": 3, "a26": 14, "p26": 10, "r26": 3, "total_a": 38, "total_r": 13, "diff_a": 4, "diff_r": 0}, {"rank": 83, "school": "울산여자상업고등학교", "region": "울산광역시", "district": "남구", "type": "특성화고", "a24": 10, "p24": 9, "r24": 3, "a25": 10, "p25": 8, "r25": 3, "a26": 18, "p26": 16, "r26": 6, "total_a": 38, "total_r": 12, "diff_a": 8, "diff_r": 3}, {"rank": 83, "school": "김해한일여자고등학교", "region": "경상남도", "district": "김해시", "type": "특성화고", "a24": 15, "p24": 12, "r24": 4, "a25": 9, "p25": 8, "r25": 3, "a26": 14, "p26": 14, "r26": 3, "total_a": 38, "total_r": 10, "diff_a": 5, "diff_r": 0}, {"rank": 83, "school": "웅천고등학교", "region": "경상남도", "district": "창원시 진해구", "type": "자율고", "a24": 21, "p24": 20, "r24": 2, "a25": 9, "p25": 5, "r25": 2, "a26": 8, "p26": 3, "r26": 1, "total_a": 38, "total_r": 5, "diff_a": -1, "diff_r": -1}, {"rank": 90, "school": "경일고등학교", "region": "부산광역시", "district": "강서구", "type": "일반고", "a24": 10, "p24": 10, "r24": 3, "a25": 15, "p25": 12, "r25": 3, "a26": 12, "p26": 5, "r26": 1, "total_a": 37, "total_r": 7, "diff_a": -3, "diff_r": -2}, {"rank": 90, "school": "부일전자디자인고등학교", "region": "부산광역시", "district": "사하구", "type": "특성화고", "a24": 9, "p24": 7, "r24": 1, "a25": 15, "p25": 15, "r25": 3, "a26": 13, "p26": 11, "r26": 0, "total_a": 37, "total_r": 4, "diff_a": -2, "diff_r": -3}, {"rank": 90, "school": "부산남일고등학교", "region": "부산광역시", "district": "수영구", "type": "일반고", "a24": 17, "p24": 15, "r24": 3, "a25": 9, "p25": 7, "r25": 2, "a26": 11, "p26": 4, "r26": 1, "total_a": 37, "total_r": 6, "diff_a": 2, "diff_r": -1}, {"rank": 90, "school": "신도고등학교", "region": "부산광역시", "district": "해운대구", "type": "일반고", "a24": 8, "p24": 8, "r24": 1, "a25": 12, "p25": 12, "r25": 3, "a26": 17, "p26": 13, "r26": 5, "total_a": 37, "total_r": 9, "diff_a": 5, "diff_r": 2}, {"rank": 90, "school": "매곡고등학교", "region": "울산광역시", "district": "북구", "type": "일반고", "a24": 11, "p24": 9, "r24": 0, "a25": 8, "p25": 8, "r25": 2, "a26": 18, "p26": 9, "r26": 2, "total_a": 37, "total_r": 4, "diff_a": 10, "diff_r": 0}, {"rank": 95, "school": "브니엘고등학교", "region": "부산광역시", "district": "금정구", "type": "일반고", "a24": 23, "p24": 22, "r24": 7, "a25": 4, "p25": 3, "r25": 1, "a26": 9, "p26": 6, "r26": 2, "total_a": 36, "total_r": 10, "diff_a": 5, "diff_r": 1}, {"rank": 95, "school": "데레사여자고등학교", "region": "부산광역시", "district": "동구", "type": "일반고", "a24": 7, "p24": 7, "r24": 3, "a25": 8, "p25": 6, "r25": 4, "a26": 21, "p26": 19, "r26": 8, "total_a": 36, "total_r": 15, "diff_a": 13, "diff_r": 4}, {"rank": 95, "school": "경남여자고등학교", "region": "부산광역시", "district": "동구", "type": "일반고", "a24": 14, "p24": 10, "r24": 6, "a25": 10, "p25": 8, "r25": 2, "a26": 12, "p26": 10, "r26": 5, "total_a": 36, "total_r": 13, "diff_a": 2, "diff_r": 3}, {"rank": 95, "school": "부산백양고등학교", "region": "부산광역시", "district": "북구", "type": "일반고", "a24": 12, "p24": 11, "r24": 1, "a25": 13, "p25": 10, "r25": 2, "a26": 11, "p26": 7, "r26": 3, "total_a": 36, "total_r": 6, "diff_a": -2, "diff_r": 1}, {"rank": 95, "school": "다대고등학교", "region": "부산광역시", "district": "사하구", "type": "일반고", "a24": 5, "p24": 4, "r24": 0, "a25": 12, "p25": 10, "r25": 1, "a26": 19, "p26": 15, "r26": 6, "total_a": 36, "total_r": 7, "diff_a": 7, "diff_r": 5}, {"rank": 100, "school": "문현여자고등학교", "region": "부산광역시", "district": "남구", "type": "일반고", "a24": 12, "p24": 12, "r24": 4, "a25": 7, "p25": 7, "r25": 2, "a26": 16, "p26": 13, "r26": 5, "total_a": 35, "total_r": 11, "diff_a": 9, "diff_r": 3}];
 
 let filtered = [...DATA];
 let sortCol = 'rank', sortDir = 'asc';
+let currentPage = 1, pageSize = 25;
 
-// Populate filters
 const regions = [...new Set(DATA.map(d=>d.region))].sort();
 const types = [...new Set(DATA.map(d=>d.type))].sort();
 regions.forEach(r => { const o=document.createElement('option'); o.value=r; o.textContent=r; document.getElementById('filterRegion').appendChild(o); });
@@ -134,11 +141,15 @@ function applyFilters() {
   const typ = document.getElementById('filterType').value;
   const q = document.getElementById('filterSearch').value.toLowerCase();
   filtered = DATA.filter(d => (!reg || d.region===reg) && (!typ || d.type===typ) && (!q || d.school.toLowerCase().includes(q)));
+  currentPage = 1;
   doSort(); renderAll();
 }
 document.getElementById('filterRegion').onchange = applyFilters;
 document.getElementById('filterType').onchange = applyFilters;
 document.getElementById('filterSearch').oninput = applyFilters;
+document.getElementById('pageSize').onchange = function() {
+  pageSize = parseInt(this.value); currentPage = 1; renderTable(); renderPagination();
+};
 
 function doSort() {
   filtered.sort((a,b) => {
@@ -162,12 +173,20 @@ document.querySelectorAll('#mainTable th').forEach(th => {
 });
 
 function chg(v) { return v>0?`<span class="change-pos">+${v}</span>`:v<0?`<span class="change-neg">${v}</span>`:`<span>${v}</span>`; }
-function rankBadge(r) { const cls=r<=3?`rank-${r}`:'rank-n'; return `<span class="rank-badge ${cls}">${r}</span>`; }
+function rankBadge(r) {
+  const cls = r===1?'rank-1':r===2?'rank-2':r===3?'rank-3':r<=10?'rank-top10':'rank-n';
+  return `<span class="rank-badge ${cls}">${r}</span>`;
+}
 function tagHtml(t) { return `<span class="tag tag-${t}">${t}</span>`; }
 
+function getPageSize() { return pageSize >= 100 ? filtered.length : pageSize; }
+
 function renderTable() {
+  const ps = getPageSize();
+  const start = (currentPage - 1) * ps;
+  const pageData = filtered.slice(start, start + ps);
   const tb = document.getElementById('tableBody');
-  tb.innerHTML = filtered.map((d,i) => `<tr>
+  tb.innerHTML = pageData.map(d => `<tr>
     <td>${rankBadge(d.rank)}</td>
     <td style="font-weight:600">${d.school}</td>
     <td>${d.region.replace('광역시','').replace('특별시','').replace('특별자치시','').replace('특별자치도','')}</td>
@@ -178,7 +197,28 @@ function renderTable() {
     <td style="font-weight:700">${d.total_a}</td><td style="font-weight:700">${d.total_r}</td>
     <td>${chg(d.diff_a)}</td><td>${chg(d.diff_r)}</td>
   </tr>`).join('');
+  renderPagination();
 }
+
+function renderPagination() {
+  const ps = getPageSize();
+  const totalPages = Math.ceil(filtered.length / ps);
+  const pag = document.getElementById('pagination');
+  const info = document.getElementById('pageInfo');
+  const start = (currentPage-1)*ps+1;
+  const end = Math.min(currentPage*ps, filtered.length);
+  info.textContent = `총 ${filtered.length}개교 중 ${start}~${end}번째 표시`;
+  if(totalPages <= 1) { pag.innerHTML = ''; return; }
+  let html = '';
+  if(currentPage > 1) html += `<button onclick="goPage(${currentPage-1})">◀</button>`;
+  const sp = Math.max(1, currentPage-3), ep = Math.min(totalPages, currentPage+3);
+  if(sp > 1) html += `<button onclick="goPage(1)">1</button>${sp>2?'<span style="padding:0 4px">…</span>':''}`;
+  for(let i=sp; i<=ep; i++) html += `<button class="${i===currentPage?'active':''}" onclick="goPage(${i})">${i}</button>`;
+  if(ep < totalPages) html += `${ep<totalPages-1?'<span style="padding:0 4px">…</span>':''}<button onclick="goPage(${totalPages})">${totalPages}</button>`;
+  if(currentPage < totalPages) html += `<button onclick="goPage(${currentPage+1})">▶</button>`;
+  pag.innerHTML = html;
+}
+function goPage(p) { currentPage=p; renderTable(); document.getElementById('mainTable').scrollIntoView({behavior:'smooth',block:'start'}); }
 
 function renderKPI() {
   const d = filtered;
@@ -188,9 +228,8 @@ function renderKPI() {
   const pctA=ta25?((ta26/ta25-1)*100).toFixed(1):0;
   const pctR=tr25?((tr26/tr25-1)*100).toFixed(1):0;
   const regRate26=ta26?(tr26/ta26*100).toFixed(1):0;
-
   document.getElementById('kpiRow').innerHTML = `
-    <div class="kpi"><div class="label">대상 학교 수</div><div class="value">${d.length}개교</div><div class="sub" style="color:#64748b">전체 Top 30 중</div></div>
+    <div class="kpi"><div class="label">대상 학교 수</div><div class="value">${d.length}개교</div><div class="sub" style="color:#64748b">전체 Top 100 중</div></div>
     <div class="kpi"><div class="label">2026 총 지원인원</div><div class="value">${ta26.toLocaleString()}명</div><div class="sub ${diffA>=0?'up':'down'}">전년 대비 ${diffA>=0?'+':''}${diffA}명 (${diffA>=0?'+':''}${pctA}%)</div></div>
     <div class="kpi"><div class="label">2026 총 등록인원</div><div class="value">${tr26.toLocaleString()}명</div><div class="sub ${diffR>=0?'up':'down'}">전년 대비 ${diffR>=0?'+':''}${diffR}명 (${diffR>=0?'+':''}${pctR}%)</div></div>
     <div class="kpi"><div class="label">2026 등록률</div><div class="value">${regRate26}%</div><div class="sub" style="color:#64748b">등록/지원</div></div>
@@ -199,13 +238,11 @@ function renderKPI() {
 }
 
 const COLORS = ['#2563eb','#dc2626','#059669','#d97706','#7c3aed','#db2777','#0891b2','#65a30d','#ea580c','#6366f1'];
-
 let chartTrend, chartReg, chartPie, chartDiff;
 
 function renderCharts() {
   const top10 = [...filtered].sort((a,b)=>b.total_a-a.total_a).slice(0,10);
 
-  // Trend chart
   if(chartTrend) chartTrend.destroy();
   chartTrend = new Chart(document.getElementById('chartTrend'), {
     type:'line',
@@ -221,7 +258,6 @@ function renderCharts() {
     options: { responsive:true, maintainAspectRatio:false, plugins:{legend:{position:'bottom',labels:{font:{size:11},boxWidth:12}}}, scales:{y:{beginAtZero:true,title:{display:true,text:'지원인원(명)'}}} }
   });
 
-  // Registration bar chart
   if(chartReg) chartReg.destroy();
   chartReg = new Chart(document.getElementById('chartReg'), {
     type:'bar',
@@ -236,7 +272,6 @@ function renderCharts() {
     options: { responsive:true, maintainAspectRatio:false, plugins:{legend:{position:'bottom',labels:{font:{size:11},boxWidth:12}}}, scales:{y:{beginAtZero:true,title:{display:true,text:'등록인원(명)'}},x:{ticks:{font:{size:10}}}} }
   });
 
-  // Pie chart by school type
   if(chartPie) chartPie.destroy();
   const typeMap = {};
   filtered.forEach(d=>{ typeMap[d.type]=(typeMap[d.type]||0)+d.total_a; });
@@ -248,7 +283,6 @@ function renderCharts() {
     options: { responsive:true, maintainAspectRatio:false, plugins:{legend:{position:'bottom',labels:{font:{size:12},boxWidth:14}}} }
   });
 
-  // Diff chart
   if(chartDiff) chartDiff.destroy();
   const sorted = [...filtered].sort((a,b)=>b.diff_a-a.diff_a);
   const diffData = [...sorted.slice(0,5), ...sorted.slice(-5)].filter((v,i,a)=>a.indexOf(v)===i);
